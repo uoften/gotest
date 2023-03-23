@@ -1,0 +1,239 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
+	"regexp"
+	"strings"
+)
+
+func main()  {
+	config_bytes, err := ioutil.ReadFile("./hillstone_ip_route.txt")
+	if err != nil {
+		fmt.Printf("读取对应的配置文件失败")
+		return
+	}
+	configStr := string(config_bytes)
+	configStr = strings.ReplaceAll(configStr, "\r\n", "\n")
+	configStr = strings.ReplaceAll(configStr, "\r", "\n")
+
+	// 获取解析规则
+	rule := AnalysisRule{}
+	bytes, err := ioutil.ReadFile("./hillstone.json")
+	if err != nil {
+		fmt.Printf("读取对应的解析规则文件失败")
+		return
+	}
+	err = json.Unmarshal([]byte(bytes), &rule)
+	if err != nil {
+		fmt.Printf("获取解析规则json格式失败")
+		return
+	}
+	var line int
+	unAnalysisLine := make(map[int]string)
+	f := func(rule []string, lineConf string) (reData []string, reIndex int) {
+		// 正则匹配获取对应数据
+		for _, ruleString := range rule {
+			reData = regexp.MustCompile(ruleString).FindStringSubmatch(lineConf)
+			reIndex += 1
+			if reData == nil {
+				continue
+			} else {
+				return reData[1:], reIndex
+			}
+		}
+		return
+	}
+	handRouteRe1 := func(reRoute []string) (ret RoutePolicy) {
+		//['0.0.0.0', '0', 'O_ASE2', '150', '1', '10.54.255.70', 'Reth255']   "0.0.0.0/0          O_ASE2  150 1           10.54.255.70    Reth255"
+		//ret.IpSegment = fmt.Sprintf("%s/%s", reRoute[0], reRoute[1])
+		//ret.Mask, _ = strconv.Atoi(reRoute[1])
+		//ret.Protocol = reRoute[2]
+		//ret.Priority, _ = strconv.Atoi(reRoute[3])
+		//ret.Cost, _ = strconv.Atoi(reRoute[4])
+		//ret.NextHop = reRoute[5]
+		//ret.Interface = reRoute[6]
+		return
+	}
+	configList := strings.Split(configStr, "\n")
+	var mRoutePolicy []RoutePolicy
+	for _, lineConf := range configList {
+		// 处理每一行的数据
+		line += 1
+		//fmt.Printf("第%d行%v\n",line,lineConf)
+		if strings.TrimSpace(lineConf) == "" {
+			continue
+		}
+		lineConf = lineConf + "\n"
+		fmt.Printf("\n%#v\n",lineConf)
+		fmt.Printf("%#v\n",rule.RoutePolicyRule)
+		reRoute, reIndex := f(rule.RoutePolicyRule, lineConf)
+		if reRoute != nil {
+			fmt.Printf("%#v\n\n\n",reRoute)
+			var reHandRoutePolicy RoutePolicy
+			switch reIndex {
+			case 1:
+				reHandRoutePolicy = handRouteRe1(reRoute)
+			case 2:
+				reHandRoutePolicy = handRouteRe1(reRoute)
+			default:
+				fmt.Printf("【配置解析-路由策略】 路由策略正则数据处理方法缺失")
+				unAnalysisLine[line] = lineConf
+			}
+			if reHandRoutePolicy.IpSegment != "" {
+				mRoutePolicy = append(mRoutePolicy, reHandRoutePolicy)
+			}
+			continue
+		}
+		unAnalysisLine[line] = lineConf
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+// route_policy model
+type RoutePolicy struct {
+	Id          bson.ObjectId `json:"_id,omitempty" bson:"_id,omitempty"`
+	DeviceIp    string        `json:"device_ip" bson:"device_ip"`
+	IpSegment   string        `json:"ip_segment" bson:"ip_segment"`
+	StartIp     int           `json:"start_ip" bson:"start_ip"`
+	EndIp       int           `json:"end_ip" bson:"end_ip"`
+	Mask        int           `json:"mask" bson:"mask"`
+	Protocol    string        `json:"protocol" bson:"protocol"`
+	Priority    int           `json:"priority" bson:"priority"`
+	Cost        int           `json:"cost" bson:"cost"`
+	NextHop     string        `json:"next_hop" bson:"next_hop"`
+	Interface   string        `json:"interface" bson:"interface"`
+	VpnInstance string        `json:"vpn_instance" bson:"vpn_instance"`
+	UpdateTime  string        `json:"update_time"  bson:"update_time"`
+}
+
+
+type AnalysisRule struct {
+	Address         []string        `json:"address"`
+	Service         []string        `json:"service"`
+	Time            []string        `json:"time"`
+	Zone            []string        `json:"zone"`
+	AclTime         []string        `json:"acl_time"`
+	Acl             []string        `json:"acl"`
+	PolicyRoute     []string        `json:"policy_route"`
+	Policy          []string        `json:"policy"`
+	InterfacePort   []string        `json:"interface_port"`
+	RoutePolicyRule []string        `json:"route_policy_rule"`
+	AddressRule     AddressRule     `json:"address_rule"`
+	ServiceRule     ServiceRule     `json:"service_rule"`
+	TimeRule        TimeRule        `json:"time_rule"`
+	ZoneRule        ZoneRule        `json:"zone_rule"`
+	AclTimeRule     AclTimeRule     `json:"acl_time_rule"`
+	AclRule         AclRule         `json:"acl_rule"`
+	PolicyRouteRule RolicyRouteRule `json:"policy_route_rule"`
+	PolicyRule      PolicyRule      `json:"policy_rule"`
+	InterfaceRule   InterfaceRule   `json:"interface_rule"`
+}
+
+type AddressRule struct {
+	Name    []string `json:"name"`
+	Address []string `json:"address"`
+}
+
+type ServiceRule struct {
+	Name    []string `json:"name"`
+	Service []string `json:"service"`
+}
+
+type TimeRule struct {
+	Name []string `json:"name"`
+	Time []string `json:"time"`
+}
+
+type ZoneRule struct {
+	Name      []string `json:"name"`
+	Priority  []string `json:"priority"`
+	Interface []string `json:"interface"`
+}
+
+type AclTimeRule struct {
+	Time []string `json:"time"`
+}
+
+type AclRule struct {
+	Number     []string `json:"number"`
+	Desc       []string `json:"desc"`
+	RuleObject []string `json:"rule_object"`
+}
+
+type RolicyRouteRule struct {
+	Name      []string `json:"name"`
+	AclNumber []string `json:"acl_number"`
+	NextHop   []string `json:"next_hop"`
+}
+
+type PolicyRule struct {
+	Name             []string `json:"name"`
+	Desc             []string `json:"desc"`
+	SrcZone          []string `json:"src_zone"`
+	DestZone         []string `json:"dest_zone"`
+	SrcAddress       []string `json:"src_address"`
+	SrcGroupAddress  []string `json:"src_group_address"`
+	DestAddress      []string `json:"dest_address"`
+	DestGroupAddress []string `json:"dest_group_address"`
+	GroupService     []string `json:"group_service"`
+	ServicePort      []string `json:"service_port"`
+	Protocol         []string `json:"protocol"`
+	GroupTime        []string `json:"group_time"`
+	Action           []string `json:"action"`
+	Status           []string `json:"status"`
+}
+
+type InterfaceRule struct {
+	Name        []string `json:"name"`
+	VpnInstance []string `json:"vpn_instance"`
+	InterfaceIp []string `json:"interface_ip"`
+}
+
+
+type AnalysisParams struct {
+	DeviceBrand string `json:"device_brand"`
+	DeviceType  string `json:"device_type"`
+	Version     string `json:"version"`
+	DeviceIp    string `json:"device_ip"`
+	FilePath    string `json:"file_path"`
+	FileType    string `json:"file_type"`
+	VpnInstance string `json:"vpn_instance"`
+}
+
+type GetHomePageDataReq struct {
+	UserName string `json:"username"`
+}
+
+type GetHomePageDataResp struct {
+	TotalDeviceCount    int        `json:"total_device_count"`
+	FireWallDeviceCount int        `json:"firewall_device_count"`
+	RouteDeviceCount    int        `json:"route_device_count"`
+	SwitchDeviceCount   int        `json:"switch_device_count"`
+	TotalPolicyCount    int        `json:"total_policy_count"`
+	RiskPolicyCount     int        `json:"risk_policy_count"`
+	ProblemPolicyCount  int        `json:"problem_policy_count"`
+	TodayFireWallCount  int        `json:"today_firewall_count"`
+	TotalTaskCount      int        `json:"total_task_count"`
+	WaitTaskCount       int        `json:"wait_task_count"`
+	FailTaskCount       int        `json:"fail_task_count"`
+	WaitTaskList        []TaskList `json:"wait_task_list"`
+	FailTaskList        []TaskList `json:"fail_task_list"`
+}
+
+type TaskList struct {
+	TaskName   string `json:"task_name"`
+	ReqUser    string `json:"req_user"`
+	UpdateTime string `json:"update_time"`
+}

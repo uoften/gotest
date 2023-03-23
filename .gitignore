@@ -1,0 +1,10 @@
+.idea/
+vendor/
+file/
+*.log
+*.txt
+/*.jpg
+/*.png
+/*.js
+/*.json
+/*.html

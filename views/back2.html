@@ -1,0 +1,19 @@
+{{define "views/back2.html"}}
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>找不到文件,请回到下载页面重新下载</title>
+</head>
+<body>
+找不到文件,请回到下载页面重新下载
+<input type="button" name="Submit" onclick="javascript:history.back(-1);" value="返回上一页">
+<script language=javascript>
+    function go()
+    {
+        window.history.go(-1);
+    }
+    setTimeout("go()",3000);
+</script>
+</body>
+</html>
+{{ end }}

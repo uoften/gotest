@@ -1,0 +1,5 @@
+spider_async: true
+spider_allow_url_revisit: true
+spider_limit_rule_domain_glob: "8080"
+spider_limit_rule_parallelism: 10
+spider_limit_rule_random_delay: 30
